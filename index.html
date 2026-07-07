@@ -444,7 +444,7 @@ window.fetchTrashByAI = async () => {
   status.style.display = 'block';
   status.textContent = city+'のゴミ収集情報を調べています...';
   try {
-    const res = await fetch('https://kurashi-ai.YOUR-SUBDOMAIN.workers.dev/trash',{
+    const res = await fetch('https://frosty-block-d207.horiday-good.workers.dev/trash',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({city})
@@ -655,7 +655,7 @@ window.suggestMenu = async () => {
   btn.disabled=true;
   btn.innerHTML='<div class="spinner"></div><span>考え中...</span>';
   try {
-    const res=await fetch('https://kurashi-ai.YOUR-SUBDOMAIN.workers.dev/suggest',{
+    const res=await fetch('https://frosty-block-d207.horiday-good.workers.dev/suggest',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ingredients:ing})
