@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#2d6a4f">
+<title>月の支払い</title>
+<style>
+:root {
+  --green: #2d6a4f; --green-light: #e8f5ee; --green-mid: #c8e6d4;
+  --accent: #52b788; --bg: #f4fbf7; --card: #fff;
+  --text: #1a2e22; --text-sub: #5a7a65; --border: #cce8d8;
+  --radius: 16px; --shadow: 0 2px 12px rgba(45,106,79,0.08);
+  --red: #e05252; --red-light: #ffeaea;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system,'Hiragino Sans',sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 30px; }
+.header { background: var(--green); color: white; padding: 14px 16px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
+.back-btn { background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 10px; padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.header-title { font-size: 17px; font-weight: 700; }
+.section { padding: 14px 12px 0; }
+.card { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+.card-title { font-size: 13px; font-weight: 700; color: var(--text-sub); margin-bottom: 12px; }
+
+/* 合計 */
+.total-area { text-align: center; padding: 6px 0 10px; }
+.total-label { font-size: 13px; color: var(--text-sub); font-weight: 600; }
+.total-amount { font-size: 38px; font-weight: 900; color: var(--green); letter-spacing: -1px; }
+.total-unit { font-size: 16px; }
+.total-sub { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
+
+/* カテゴリタブ */
+.cat-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.cat-tab {
+  padding: 6px 12px; border-radius: 20px; border: 1.5px solid var(--border);
+  background: white; font-size: 12px; font-weight: 700; cursor: pointer;
+  font-family: inherit; color: var(--text-sub); transition: all 0.15s;
+}
+.cat-tab.active { background: var(--green); border-color: var(--green); color: white; }
+
+/* 支払いリスト */
+.payment-list { display: flex; flex-direction: column; gap: 8px; }
+.payment-item {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--green-light); border-radius: 12px; padding: 12px 14px;
+}
+.payment-icon { font-size: 24px; flex-shrink: 0; }
+.payment-info { flex: 1; }
+.payment-name { font-size: 14px; font-weight: 700; }
+.payment-meta { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
+.payment-amount { font-size: 16px; font-weight: 800; color: var(--green); }
+.payment-del { background: none; border: none; color: #ccc; font-size: 16px; cursor: pointer; }
+.payments-empty { text-align: center; color: var(--text-sub); font-size: 13px; padding: 20px; }
+
+/* 追加フォーム */
+.form-group { margin-bottom: 10px; }
+.form-label { font-size: 11px; color: var(--text-sub); font-weight: 700; margin-bottom: 4px; }
+.form-input { border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-family: inherit; outline: none; width: 100%; }
+.form-input:focus { border-color: var(--green); }
+.form-row { display: flex; gap: 8px; }
+.form-row .form-group { flex: 1; }
+.primary-btn { background: var(--green); color: white; border: none; border-radius: 12px; padding: 12px; font-size: 15px; font-weight: 700; cursor: pointer; width: 100%; font-family: inherit; }
+.add-dashed-btn { background: none; border: 2px dashed var(--border); border-radius: 12px; padding: 10px; color: var(--text-sub); font-size: 13px; font-weight: 700; cursor: pointer; width: 100%; font-family: inherit; margin-top: 6px; transition: all 0.15s; }
+.add-dashed-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* emoji grid */
+.emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 12px; }
+.emoji-btn { aspect-ratio:1; font-size:22px; border:2px solid #eee; border-radius:10px; cursor:pointer; background:none; display:flex;align-items:center;justify-content:center; }
+.emoji-btn.selected { border-color: var(--green); background: var(--green-light); }
+
+/* グラフ */
+.chart-bar-list { display: flex; flex-direction: column; gap: 8px; }
+.chart-bar-row { display: flex; align-items: center; gap: 10px; }
+.chart-bar-label { font-size: 12px; font-weight: 700; width: 80px; flex-shrink: 0; }
+.chart-bar-wrap { flex: 1; background: var(--green-light); border-radius: 6px; height: 16px; overflow: hidden; }
+.chart-bar-fill { height: 100%; background: var(--accent); border-radius: 6px; transition: width 0.5s; }
+.chart-bar-val { font-size: 12px; font-weight: 700; color: var(--green); width: 70px; text-align: right; flex-shrink: 0; }
+
+.overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-end;justify-content:center; }
+.overlay.show { display:flex; }
+.modal { background:white;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto; }
+.modal-head { font-size:16px;font-weight:700;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center; }
+.modal-close { background:none;border:none;font-size:22px;cursor:pointer;color:#aaa; }
+
+.toast { position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(16px);background:#1a2e22;color:white;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:600;opacity:0;transition:all .3s;z-index:400;white-space:nowrap; }
+.toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="window.location.href='index.html'">← もどる</button>
+  <div class="header-title">💰 月の支払い</div>
+</div>
+
+<!-- 合計 -->
+<div class="section">
+  <div class="card">
+    <div class="total-area">
+      <div class="total-label">今月の固定費合計</div>
+      <div class="total-amount"><span id="totalAmount">0</span><span class="total-unit">円</span></div>
+      <div class="total-sub" id="totalCount">0件</div>
+    </div>
+  </div>
+</div>
+
+<!-- グラフ -->
+<div class="section">
+  <div class="card">
+    <div class="card-title">📊 カテゴリ別</div>
+    <div class="chart-bar-list" id="chartArea"></div>
+  </div>
+</div>
+
+<!-- リスト -->
+<div class="section">
+  <div class="card">
+    <div class="card-title">📋 支払い一覧</div>
+    <div class="cat-tabs" id="catTabs"></div>
+    <div class="payment-list" id="paymentList"></div>
+    <button class="add-dashed-btn" onclick="openAdd()">＋ 支払いを追加</button>
+  </div>
+</div>
+
+<!-- 追加モーダル -->
+<div class="overlay" id="addOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <span>＋ 支払いを追加</span>
+      <button class="modal-close" onclick="closeAdd()">×</button>
+    </div>
+    <div class="form-group">
+      <div class="form-label">アイコン</div>
+      <div class="emoji-grid" id="emojiGrid"></div>
+    </div>
+    <div class="form-group">
+      <div class="form-label">名前</div>
+      <input class="form-input" id="payName" placeholder="例：Netflix、電気代">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <div class="form-label">金額（円）</div>
+        <input class="form-input" id="payAmount" type="number" placeholder="1980">
+      </div>
+      <div class="form-group">
+        <div class="form-label">カテゴリ</div>
+        <select class="form-input" id="payCat">
+          <option>サブスク</option>
+          <option>光熱費</option>
+          <option>通信費</option>
+          <option>保険</option>
+          <option>教育</option>
+          <option>その他</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="form-label">引き落とし日（任意）</div>
+      <input class="form-input" id="payDay" type="number" min="1" max="31" placeholder="例：27">
+    </div>
+    <button class="primary-btn" onclick="savePayment()">追加する</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, onValue, push, remove }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCvLr32VkotUtHsnQWQHo7SvLtbJs1SH2E",
+  authDomain: "kurashi-dashboard.firebaseapp.com",
+  databaseURL: "https://kurashi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "kurashi-dashboard",
+  storageBucket: "kurashi-dashboard.firebasestorage.app",
+  messagingSenderId: "37547202019",
+  appId: "1:37547202019:web:2a467e96ea090a31e8fcd6",
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+
+const EMOJIS = ['💳','🏠','💡','📱','🚗','🎬','🎵','📺','🍔','✈️','🏥','📚','👗','🎮','💪','🐶'];
+const CATS = ['すべて','サブスク','光熱費','通信費','保険','教育','その他'];
+
+let payments = {};
+let selectedEmoji = EMOJIS[0];
+let selectedCat = 'すべて';
+
+onValue(ref(db, 'payments'), s => { payments = s.val()||{}; render(); });
+
+function render() {
+  const items = Object.entries(payments);
+  const total = items.reduce((sum,[,p])=>sum+(parseInt(p.amount)||0), 0);
+  document.getElementById('totalAmount').textContent = total.toLocaleString();
+  document.getElementById('totalCount').textContent = `${items.length}件`;
+
+  // カテゴリタブ
+  const cats = [...new Set(['すべて', ...items.map(([,p])=>p.cat||'その他')])];
+  document.getElementById('catTabs').innerHTML = cats.map(c =>
+    `<button class="cat-tab${c===selectedCat?' active':''}" onclick="filterCat('${c}')">${c}</button>`
+  ).join('');
+
+  // リスト
+  const filtered = selectedCat==='すべて' ? items
+    : items.filter(([,p])=>p.cat===selectedCat);
+  const list = document.getElementById('paymentList');
+  if (!filtered.length) {
+    list.innerHTML = '<div class="payments-empty">支払いがありません</div>';
+  } else {
+    list.innerHTML = filtered.sort((a,b)=>(b[1].amount||0)-(a[1].amount||0)).map(([id,p]) => `
+      <div class="payment-item">
+        <div class="payment-icon">${p.emoji||'💳'}</div>
+        <div class="payment-info">
+          <div class="payment-name">${p.name}</div>
+          <div class="payment-meta">${p.cat||''}${p.day?' · '+p.day+'日引落':''}  </div>
+        </div>
+        <div class="payment-amount">¥${parseInt(p.amount||0).toLocaleString()}</div>
+        <button class="payment-del" onclick="delPayment('${id}')">✕</button>
+      </div>`).join('');
+  }
+
+  // グラフ
+  const catTotals = {};
+  items.forEach(([,p])=>{ const c=p.cat||'その他'; catTotals[c]=(catTotals[c]||0)+(parseInt(p.amount)||0); });
+  const maxVal = Math.max(...Object.values(catTotals), 1);
+  document.getElementById('chartArea').innerHTML = Object.entries(catTotals)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([cat,val])=>`
+      <div class="chart-bar-row">
+        <div class="chart-bar-label">${cat}</div>
+        <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width:${val/maxVal*100}%"></div></div>
+        <div class="chart-bar-val">¥${val.toLocaleString()}</div>
+      </div>`).join('') || '<div style="color:var(--text-sub);font-size:13px;">データなし</div>';
+}
+
+window.filterCat = cat => { selectedCat = cat; render(); };
+window.delPayment = id => { remove(ref(db, `payments/${id}`)); showToast('削除しました'); };
+
+window.openAdd = () => {
+  selectedEmoji = EMOJIS[0];
+  renderEmojiGrid();
+  document.getElementById('payName').value = '';
+  document.getElementById('payAmount').value = '';
+  document.getElementById('payDay').value = '';
+  document.getElementById('addOverlay').classList.add('show');
+};
+window.closeAdd = () => document.getElementById('addOverlay').classList.remove('show');
+
+function renderEmojiGrid() {
+  document.getElementById('emojiGrid').innerHTML = EMOJIS.map(e =>
+    `<button class="emoji-btn${e===selectedEmoji?' selected':''}" onclick="selEmoji('${e}')">${e}</button>`
+  ).join('');
+}
+window.selEmoji = e => { selectedEmoji = e; renderEmojiGrid(); };
+
+window.savePayment = () => {
+  const name = document.getElementById('payName').value.trim();
+  const amount = parseInt(document.getElementById('payAmount').value);
+  if (!name || !amount) { showToast('名前と金額を入力してください'); return; }
+  push(ref(db, 'payments'), {
+    name, amount,
+    emoji: selectedEmoji,
+    cat: document.getElementById('payCat').value,
+    day: document.getElementById('payDay').value || ''
+  });
+  showToast('追加しました');
+  closeAdd();
+};
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

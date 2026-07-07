@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#4a90d9">
+<title>紙の写真</title>
+<style>
+:root {
+  --blue: #4a90d9; --blue-light: #e8f0fb; --bg: #f5f8ff;
+  --card: #fff; --text: #1a2233; --text-sub: #6a7a99;
+  --border: #d6e4f7; --radius: 16px; --shadow: 0 2px 12px rgba(74,144,217,0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system,'Hiragino Sans',sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 30px; }
+.header { background: var(--blue); color: white; padding: 14px 16px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
+.back-btn { background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 10px; padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; text-decoration: none; }
+.header-title { font-size: 17px; font-weight: 700; }
+.section { padding: 14px 12px 0; }
+.card { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+.card-title { font-size: 13px; font-weight: 700; color: var(--text-sub); margin-bottom: 12px; }
+
+/* アップロード */
+.upload-area {
+  border: 3px dashed var(--border); border-radius: 14px;
+  padding: 24px; text-align: center; cursor: pointer;
+  transition: all 0.15s; margin-bottom: 12px;
+}
+.upload-area:hover { border-color: var(--blue); background: var(--blue-light); }
+.upload-icon { font-size: 36px; margin-bottom: 8px; }
+.upload-text { font-size: 14px; font-weight: 700; color: var(--text-sub); }
+.upload-hint { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
+input[type=file] { display: none; }
+
+.tag-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.tag-input {
+  flex: 1; border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 9px 12px; font-size: 14px; font-family: inherit; outline: none;
+}
+.tag-input:focus { border-color: var(--blue); }
+.add-btn {
+  background: var(--blue); color: white; border: none; border-radius: 10px;
+  padding: 9px 16px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+
+/* 写真グリッド */
+.photos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.photo-card {
+  background: var(--card); border-radius: 14px; overflow: hidden;
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.photo-img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; cursor: pointer; }
+.photo-meta { padding: 10px 12px; }
+.photo-tag { font-size: 12px; font-weight: 700; color: var(--blue); margin-bottom: 2px; }
+.photo-date { font-size: 11px; color: var(--text-sub); }
+.photo-del { background: none; border: none; color: #ccc; font-size: 13px; cursor: pointer; float: right; margin-top: -18px; }
+.photos-empty { text-align: center; color: var(--text-sub); font-size: 13px; padding: 20px; }
+
+/* 拡大モーダル */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:200; align-items:center; justify-content:center; padding: 20px; }
+.overlay.show { display:flex; }
+.lightbox-img { max-width:100%; max-height:90vh; border-radius: 12px; }
+.lightbox-close { position:fixed; top:16px; right:16px; background:rgba(255,255,255,0.2); border:none; color:white; font-size:24px; width:40px;height:40px;border-radius:50%;cursor:pointer; }
+
+.toast { position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(16px);background:#1a2233;color:white;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:600;opacity:0;transition:all .3s;z-index:400;white-space:nowrap; }
+.toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="window.location.href='index.html'">← もどる</button>
+  <div class="header-title">📄 紙の写真</div>
+</div>
+
+<div class="section">
+  <div class="card">
+    <div class="card-title">📷 写真を追加</div>
+    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon">📷</div>
+      <div class="upload-text">タップして写真を選ぶ</div>
+      <div class="upload-hint">給食表・行事予定・お知らせなど</div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFiles(this.files)">
+    <div class="tag-input-row">
+      <input class="tag-input" id="tagInput" placeholder="タグ（例：給食表、運動会）">
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="card">
+    <div class="card-title">🖼️ 保存した写真</div>
+    <div id="photosGrid" class="photos-grid"></div>
+  </div>
+</div>
+
+<!-- 拡大表示 -->
+<div class="overlay" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">×</button>
+  <img class="lightbox-img" id="lightboxImg" src="">
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, onValue, push, remove, set }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCvLr32VkotUtHsnQWQHo7SvLtbJs1SH2E",
+  authDomain: "kurashi-dashboard.firebaseapp.com",
+  databaseURL: "https://kurashi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "kurashi-dashboard",
+  storageBucket: "kurashi-dashboard.firebasestorage.app",
+  messagingSenderId: "37547202019",
+  appId: "1:37547202019:web:2a467e96ea090a31e8fcd6",
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+
+let photos = {};
+onValue(ref(db, 'photos'), s => { photos = s.val()||{}; renderPhotos(); });
+
+window.handleFiles = async (files) => {
+  const tag = document.getElementById('tagInput').value.trim() || '未分類';
+  for (const file of files) {
+    const base64 = await toBase64(file);
+    // Firebase Realtime DBは5MBまで。写真は圧縮して保存
+    const compressed = await compressImage(base64, 600);
+    const date = new Date().toLocaleDateString('ja-JP');
+    push(ref(db, 'photos'), { src: compressed, tag, date, name: file.name });
+  }
+  showToast('保存しました');
+};
+
+function toBase64(file) {
+  return new Promise(res => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.readAsDataURL(file);
+  });
+}
+
+function compressImage(base64, maxW) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const ratio = Math.min(1, maxW / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * ratio;
+      canvas.height = img.height * ratio;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      res(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.src = base64;
+  });
+}
+
+function renderPhotos() {
+  const items = Object.entries(photos).sort((a,b)=>(b[1].date||'').localeCompare(a[1].date||''));
+  const grid = document.getElementById('photosGrid');
+  if (!items.length) {
+    grid.innerHTML = '<div class="photos-empty" style="grid-column:span 2;">まだ写真がありません</div>';
+    return;
+  }
+  grid.innerHTML = items.map(([id, p]) => `
+    <div class="photo-card">
+      <img class="photo-img" src="${p.src}" onclick="openLightbox('${id}')" loading="lazy">
+      <div class="photo-meta">
+        <button class="photo-del" onclick="deletePhoto('${id}')">🗑️</button>
+        <div class="photo-tag">#${p.tag}</div>
+        <div class="photo-date">${p.date}</div>
+      </div>
+    </div>`).join('');
+}
+
+window.openLightbox = id => {
+  const p = photos[id];
+  if (!p) return;
+  document.getElementById('lightboxImg').src = p.src;
+  document.getElementById('lightbox').classList.add('show');
+};
+window.closeLightbox = () => document.getElementById('lightbox').classList.remove('show');
+window.deletePhoto = id => { remove(ref(db, `photos/${id}`)); showToast('削除しました'); };
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

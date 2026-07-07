@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffb703">
+<title>こどもの じかんわり</title>
+<style>
+:root {
+  --yellow: #ffb703;
+  --yellow-light: #fff8e1;
+  --orange: #f4a261;
+  --green: #3b7a57;
+  --bg: #fffbf0;
+  --card: #ffffff;
+  --text: #2d2d2d;
+  --text-sub: #888;
+  --border: #ffe9a0;
+  --radius: 18px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, 'Hiragino Maru Gothic ProN', 'Rounded Mplus 1c', sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; padding-bottom: 30px;
+}
+.header {
+  background: var(--yellow); padding: 14px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.back-btn {
+  background: rgba(255,255,255,0.3); border: none; border-radius: 10px;
+  padding: 6px 12px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit; color: #4a3000;
+}
+.header-title { font-size: 18px; font-weight: 800; color: #4a3000; }
+.admin-btn {
+  background: rgba(255,255,255,0.3); border: none; border-radius: 10px;
+  padding: 6px 10px; font-size: 13px; cursor: pointer; font-family: inherit; color: #4a3000;
+}
+
+/* 時計 */
+.clock-area {
+  text-align: center; padding: 20px 16px 12px;
+}
+.greeting { font-size: 22px; font-weight: 800; color: #4a3000; margin-bottom: 4px; }
+.clock { font-size: 48px; font-weight: 900; color: var(--orange); letter-spacing: 2px; }
+
+/* タブ */
+.tabs { display: flex; gap: 8px; padding: 0 16px 14px; }
+.tab {
+  flex: 1; padding: 10px; border-radius: 14px;
+  border: 3px solid var(--border); background: white;
+  font-size: 14px; font-weight: 800; cursor: pointer;
+  font-family: inherit; color: var(--text-sub); transition: all 0.15s;
+}
+.tab.active { background: var(--yellow); border-color: var(--yellow); color: #4a3000; }
+
+/* スケジュール */
+.schedule-wrap { padding: 0 12px; display: flex; flex-direction: column; gap: 10px; }
+.sch-item {
+  background: white; border-radius: var(--radius);
+  border: 2px solid var(--border); padding: 14px 16px;
+  display: flex; align-items: center; gap: 14px;
+  box-shadow: 0 2px 8px rgba(255,183,3,0.1);
+}
+.sch-item.current { border-color: var(--orange); background: #fff8f0; }
+.sch-icon { font-size: 36px; flex-shrink: 0; }
+.sch-info { flex: 1; }
+.sch-name { font-size: 20px; font-weight: 800; color: #2d2d2d; }
+.sch-time { font-size: 14px; color: var(--text-sub); margin-top: 3px; font-weight: 600; }
+.sch-empty {
+  text-align: center; font-size: 16px; font-weight: 700;
+  color: var(--text-sub); padding: 30px 20px;
+}
+
+/* 絵文字ピッカー */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5); z-index: 200;
+  align-items: flex-end; justify-content: center;
+}
+.overlay.show { display: flex; }
+.modal {
+  background: white; border-radius: 20px 20px 0 0;
+  padding: 20px; width: 100%; max-width: 480px;
+  max-height: 88vh; overflow-y: auto;
+}
+.modal-head {
+  font-size: 16px; font-weight: 800; margin-bottom: 16px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: #aaa; }
+.emoji-grid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 16px;
+}
+.emoji-btn {
+  aspect-ratio: 1; font-size: 28px; border: 2px solid #eee;
+  border-radius: 12px; cursor: pointer; background: none;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.1s;
+}
+.emoji-btn.selected { border-color: var(--orange); background: #fff8f0; }
+.form-group { margin-bottom: 10px; }
+.form-label { font-size: 11px; color: var(--text-sub); font-weight: 700; margin-bottom: 4px; }
+.form-input {
+  border: 2px solid #eee; border-radius: 12px;
+  padding: 10px 12px; font-size: 14px; font-family: inherit;
+  outline: none; width: 100%;
+}
+.form-input:focus { border-color: var(--yellow); }
+.form-row { display: flex; gap: 8px; }
+.form-row .form-group { flex: 1; }
+.primary-btn {
+  background: var(--yellow); color: #4a3000; border: none; border-radius: 14px;
+  padding: 13px; font-size: 16px; font-weight: 800; cursor: pointer;
+  width: 100%; font-family: inherit; margin-top: 4px;
+}
+.del-btn-sm { background: none; border: none; color: #ccc; font-size: 16px; cursor: pointer; padding: 4px; }
+
+.add-dashed-btn {
+  background: none; border: 3px dashed var(--border); border-radius: 14px;
+  padding: 12px; color: var(--text-sub); font-size: 15px; font-weight: 700;
+  cursor: pointer; width: 100%; font-family: inherit; margin: 10px 12px 0;
+  display: block; box-sizing: border-box;
+  width: calc(100% - 24px);
+}
+
+.toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: #4a3000; color: white; padding: 10px 20px;
+  border-radius: 20px; font-size: 14px; font-weight: 700;
+  opacity: 0; transition: all 0.3s; z-index: 400; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="window.location.href='index.html'">← おとな</button>
+  <div class="header-title">👧 じかんわり</div>
+  <button class="admin-btn" onclick="openAdmin()">⚙️ へんしゅう</button>
+</div>
+
+<div class="clock-area">
+  <div class="greeting" id="greeting">おはよう！</div>
+  <div class="clock" id="clock">--:--</div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" id="tabWeekday" onclick="switchTab('weekday')">🏫 へいじつ</button>
+  <button class="tab" id="tabWeekend" onclick="switchTab('weekend')">🌟 どにち・おやすみ</button>
+</div>
+
+<div class="schedule-wrap" id="scheduleWrap"></div>
+<button class="add-dashed-btn" onclick="openAdd()">＋ よていを ふやす</button>
+
+<!-- 追加モーダル -->
+<div class="overlay" id="addOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <span id="addModalTitle">よていを ふやす</span>
+      <button class="modal-close" onclick="closeAdd()">×</button>
+    </div>
+    <div class="form-group">
+      <div class="form-label">えを えらんでね</div>
+      <div class="emoji-grid" id="emojiGrid"></div>
+    </div>
+    <div class="form-group">
+      <div class="form-label">なまえ</div>
+      <input class="form-input" id="addName" placeholder="ようちえん、おひるね...">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <div class="form-label">はじまり</div>
+        <input class="form-input" id="addStart" type="time" value="09:00">
+      </div>
+      <div class="form-group">
+        <div class="form-label">おわり</div>
+        <input class="form-input" id="addEnd" type="time" value="15:00">
+      </div>
+    </div>
+    <button class="primary-btn" onclick="saveEvent()">ほぞんする</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, onValue, push, remove }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCvLr32VkotUtHsnQWQHo7SvLtbJs1SH2E",
+  authDomain: "kurashi-dashboard.firebaseapp.com",
+  databaseURL: "https://kurashi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "kurashi-dashboard",
+  storageBucket: "kurashi-dashboard.firebasestorage.app",
+  messagingSenderId: "37547202019",
+  appId: "1:37547202019:web:2a467e96ea090a31e8fcd6",
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+
+const EMOJIS = ['🏫','🎒','🍱','😴','🎨','🎵','⚽','🏊','📚','🛁','🍜','🌙',
+                '🚌','🦷','👗','🎮','🌸','🐶','🍎','🧩','🎯','🚲','🌈','⭐'];
+
+let tab = 'weekday';
+let weekday = {};
+let weekend = {};
+let selectedEmoji = EMOJIS[0];
+let adminMode = false;
+
+// Firebase
+onValue(ref(db, 'kidsWeekday'), s => { weekday = s.val()||{}; renderSchedule(); });
+onValue(ref(db, 'kidsWeekend'), s => { weekend = s.val()||{}; renderSchedule(); });
+
+// 時計
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}`;
+  const greetings = [[5,'おはよう！☀️'],[11,'こんにちは！🌤️'],[17,'こんばんは！🌙'],[21,'ねるじかんだよ！😴'],[24,'おはよう！☀️']];
+  const hour = now.getHours();
+  const g = greetings.find(([h])=>hour<h) || greetings[0];
+  document.getElementById('greeting').textContent = g[1];
+}
+updateClock();
+setInterval(updateClock, 10000);
+
+// タブ
+window.switchTab = t => {
+  tab = t;
+  document.getElementById('tabWeekday').classList.toggle('active', t==='weekday');
+  document.getElementById('tabWeekend').classList.toggle('active', t==='weekend');
+  renderSchedule();
+};
+
+function renderSchedule() {
+  const data = tab==='weekday' ? weekday : weekend;
+  const items = Object.entries(data).sort((a,b)=>(a[1].start||'').localeCompare(b[1].start||''));
+  const now = new Date();
+  const nowMins = now.getHours()*60 + now.getMinutes();
+  const wrap = document.getElementById('scheduleWrap');
+  if (!items.length) {
+    wrap.innerHTML = '<div class="sch-empty">まだ よていが ないよ 🌟</div>';
+    return;
+  }
+  wrap.innerHTML = items.map(([id, item]) => {
+    const startMins = timeToMins(item.start);
+    const endMins = timeToMins(item.end);
+    const isCurrent = startMins <= nowMins && nowMins < endMins;
+    return `<div class="sch-item${isCurrent?' current':''}">
+      <div class="sch-icon">${item.emoji||'⭐'}</div>
+      <div class="sch-info">
+        <div class="sch-name">${item.name}</div>
+        <div class="sch-time">${item.start||''}${item.end?'〜'+item.end:''}</div>
+      </div>
+      ${adminMode?`<button class="del-btn-sm" onclick="delEvent('${id}')">✕</button>`:''}
+    </div>`;
+  }).join('');
+}
+
+function timeToMins(t) {
+  if (!t) return 0;
+  const [h,m] = t.split(':').map(Number);
+  return h*60+m;
+}
+
+// 追加
+window.openAdmin = () => { adminMode = !adminMode; renderSchedule(); };
+
+window.openAdd = () => {
+  document.getElementById('addModalTitle').textContent =
+    tab==='weekday' ? '🏫 へいじつの よていを ふやす' : '🌟 どにちの よていを ふやす';
+  document.getElementById('addName').value = '';
+  selectedEmoji = EMOJIS[0];
+  renderEmojiGrid();
+  document.getElementById('addOverlay').classList.add('show');
+};
+window.closeAdd = () => document.getElementById('addOverlay').classList.remove('show');
+
+function renderEmojiGrid() {
+  document.getElementById('emojiGrid').innerHTML = EMOJIS.map(e =>
+    `<button class="emoji-btn${e===selectedEmoji?' selected':''}" onclick="selectEmoji('${e}')">${e}</button>`
+  ).join('');
+}
+window.selectEmoji = e => { selectedEmoji = e; renderEmojiGrid(); };
+
+window.saveEvent = () => {
+  const name = document.getElementById('addName').value.trim();
+  if (!name) return;
+  const path = tab==='weekday' ? 'kidsWeekday' : 'kidsWeekend';
+  push(ref(db, path), {
+    name, emoji: selectedEmoji,
+    start: document.getElementById('addStart').value,
+    end: document.getElementById('addEnd').value
+  });
+  showToast('ほぞんしたよ！');
+  closeAdd();
+};
+window.delEvent = id => {
+  const path = tab==='weekday' ? 'kidsWeekday' : 'kidsWeekend';
+  remove(ref(db, `${path}/${id}`));
+};
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2000);
+}
+</script>
+</body>
+</html>

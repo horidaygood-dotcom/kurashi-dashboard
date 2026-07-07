@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3b7a57">
+<title>暮らしダッシュボード</title>
+<style>
+:root {
+  --green: #3b7a57;
+  --green-light: #e8f5ee;
+  --green-mid: #c8e6d4;
+  --accent: #f4a261;
+  --accent-light: #fff3e8;
+  --bg: #f7f9f8;
+  --card: #ffffff;
+  --text: #1a2e22;
+  --text-sub: #5a7a65;
+  --border: #ddeee5;
+  --radius: 16px;
+  --shadow: 0 2px 12px rgba(59,122,87,0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system,'Hiragino Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding-bottom:30px; }
+.header { background:var(--green); color:white; padding:14px 16px; position:sticky; top:0; z-index:100; display:flex; align-items:center; justify-content:space-between; }
+.header h1 { font-size:17px; font-weight:700; }
+.header-right { display:flex; gap:8px; align-items:center; }
+.sync-dot { width:7px; height:7px; border-radius:50%; background:#6fcf97; animation:pulse 2s infinite; }
+.sync-dot.offline { background:#eb5757; animation:none; }
+.sync-label { font-size:11px; color:rgba(255,255,255,0.8); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.btn-icon { background:rgba(255,255,255,0.2); border:none; color:white; width:34px; height:34px; border-radius:10px; font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.section { padding:0 12px; margin-top:10px; }
+.card { background:var(--card); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); border:1px solid var(--border); }
+.card-title { font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:12px; }
+.card-title-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.card-title-row .card-title { margin-bottom:0; }
+
+/* ゴミ */
+.trash-list { display:flex; flex-wrap:wrap; gap:8px; }
+.trash-badge { background:var(--green-light); border:1.5px solid var(--green-mid); border-radius:10px; padding:7px 12px; font-size:13px; font-weight:600; color:var(--green); }
+.trash-badge.tomorrow { opacity:0.55; font-size:12px; }
+.trash-none { color:var(--text-sub); font-size:13px; }
+
+/* カレンダー */
+.cal-nav-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.cal-month-label { font-size:16px; font-weight:700; }
+.cal-btn { background:var(--green-light); border:none; color:var(--green); width:30px; height:30px; border-radius:8px; font-size:16px; cursor:pointer; }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; }
+.cal-dow { text-align:center; font-size:10px; font-weight:700; color:var(--text-sub); padding:3px 0 5px; }
+.cal-dow.sun { color:#d94f4f; }
+.cal-dow.sat { color:#4f6fd9; }
+.cal-day { display:flex; flex-direction:column; align-items:center; padding:4px 1px; border-radius:8px; cursor:pointer; height:36px; transition:background 0.1s; }
+.cal-day:hover { background:var(--green-light); }
+.cal-day.empty { pointer-events:none; }
+.cal-day.today .day-num { background:var(--green); color:white; border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; }
+.cal-day.sun .day-num { color:#d94f4f; }
+.cal-day.sat .day-num { color:#4f6fd9; }
+.cal-day.today.sun .day-num,.cal-day.today.sat .day-num { color:white; }
+.day-num { font-size:12px; font-weight:600; line-height:1; }
+.day-dots { display:flex; gap:2px; justify-content:center; margin-top:2px; }
+.day-dot { width:4px; height:4px; border-radius:50%; background:var(--accent); }
+
+/* Gcal */
+.gcal-member { background:var(--green-light); border-radius:10px; padding:10px 12px; margin-bottom:8px; }
+.gcal-member-name { font-size:13px; font-weight:700; margin-bottom:4px; }
+.gcal-event-item { font-size:12px; color:var(--text-sub); padding:2px 0; border-bottom:1px solid var(--green-mid); }
+.gcal-event-item:last-child { border-bottom:none; }
+.gcal-none { font-size:12px; color:var(--text-sub); }
+.refresh-btn { background:var(--green-light); border:none; color:var(--green); padding:5px 10px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+
+/* 子供 */
+.kids-tabs { display:flex; gap:6px; margin-bottom:12px; }
+.kids-tab { flex:1; padding:8px; border-radius:10px; border:2px solid var(--border); background:white; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; color:var(--text-sub); transition:all 0.15s; }
+.kids-tab.active { background:var(--accent); border-color:var(--accent); color:white; }
+.schedule-list { display:flex; flex-direction:column; gap:6px; }
+.schedule-item { display:flex; align-items:center; gap:10px; background:var(--accent-light); border-radius:10px; padding:10px 12px; }
+.schedule-time { font-size:12px; color:var(--text-sub); min-width:46px; font-weight:600; }
+.schedule-name { font-size:14px; font-weight:600; flex:1; }
+.schedule-del { background:none; border:none; color:#ccc; font-size:16px; cursor:pointer; }
+.schedule-empty { color:var(--text-sub); font-size:13px; text-align:center; padding:14px; }
+.add-dashed-btn { background:none; border:2px dashed var(--border); border-radius:10px; padding:9px; color:var(--text-sub); font-size:13px; font-weight:700; cursor:pointer; width:100%; font-family:inherit; margin-top:6px; }
+
+/* 天気 */
+.weather-main-row { display:flex; align-items:center; gap:16px; }
+.weather-emoji { font-size:52px; }
+.weather-temp { font-size:32px; font-weight:800; }
+.weather-desc { font-size:14px; color:var(--text-sub); }
+.weather-location { font-size:11px; color:var(--text-sub); margin-top:2px; }
+.weather-sub-row { display:flex; gap:16px; margin-top:12px; }
+.weather-sub-item { text-align:center; }
+.weather-sub-val { font-size:14px; font-weight:700; }
+.weather-sub-label { font-size:10px; color:var(--text-sub); }
+
+/* 献立 */
+.ingredients-label { font-size:12px; color:var(--text-sub); font-weight:600; margin-bottom:6px; }
+.ingredients-input { width:100%; border:1.5px solid var(--border); border-radius:12px; padding:10px 12px; font-size:14px; font-family:inherit; resize:none; outline:none; min-height:68px; }
+.ingredients-input:focus { border-color:var(--green); }
+.ingredients-hint { font-size:11px; color:var(--text-sub); margin-top:4px; margin-bottom:10px; }
+.menu-result { background:var(--green-light); border-radius:12px; padding:12px; margin-bottom:10px; }
+.menu-item { display:flex; align-items:flex-start; gap:10px; margin-bottom:8px; }
+.menu-item:last-child { margin-bottom:0; }
+.menu-emoji { font-size:22px; flex-shrink:0; }
+.menu-name { font-size:14px; font-weight:700; }
+.menu-desc { font-size:12px; color:var(--text-sub); margin-top:2px; }
+.suggest-btn { background:var(--green); color:white; border:none; border-radius:12px; padding:11px; font-size:14px; font-weight:700; cursor:pointer; width:100%; font-family:inherit; display:flex; align-items:center; justify-content:center; gap:6px; }
+.suggest-btn:disabled { opacity:0.6; cursor:not-allowed; }
+.spinner { width:15px; height:15px; border:2px solid rgba(255,255,255,0.4); border-top-color:white; border-radius:50%; animation:spin 0.8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* クイックリンク */
+.quick-links { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.quick-link { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px 8px; text-align:center; text-decoration:none; color:var(--text); box-shadow:var(--shadow); display:block; }
+.quick-icon { font-size:26px; display:block; margin-bottom:5px; }
+.quick-label { font-size:11px; font-weight:700; color:var(--text-sub); display:block; }
+.quick-sublabel { font-size:10px; color:var(--text-sub); opacity:0.7; display:block; margin-top:2px; }
+
+/* モーダル */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; align-items:flex-end; justify-content:center; }
+.overlay.show { display:flex; }
+.modal { background:white; border-radius:20px 20px 0 0; padding:20px; width:100%; max-width:480px; max-height:88vh; overflow-y:auto; }
+.modal-head { font-size:16px; font-weight:700; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; }
+.modal-close { background:none; border:none; font-size:22px; cursor:pointer; color:#aaa; }
+.event-card { background:var(--green-light); border-radius:10px; padding:10px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+.event-card-who { font-size:11px; color:var(--text-sub); }
+.event-card-name { font-size:14px; font-weight:600; }
+.event-card-time { font-size:12px; color:var(--text-sub); margin-top:2px; }
+.event-card-del { background:none; border:none; color:#ccc; font-size:18px; cursor:pointer; }
+.form-group { margin-bottom:10px; }
+.form-label { font-size:11px; color:var(--text-sub); font-weight:700; margin-bottom:4px; }
+.form-input { border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; font-size:14px; font-family:inherit; outline:none; width:100%; }
+.form-input:focus { border-color:var(--green); }
+.form-row { display:flex; gap:8px; }
+.form-row .form-group { flex:1; }
+.primary-btn { background:var(--green); color:white; border:none; border-radius:12px; padding:12px; font-size:15px; font-weight:700; cursor:pointer; width:100%; font-family:inherit; margin-top:4px; }
+.primary-btn:disabled { opacity:0.6; cursor:not-allowed; }
+
+/* 設定 */
+.settings-block { margin-bottom:18px; }
+.settings-block-title { font-size:12px; font-weight:700; color:var(--text-sub); padding-bottom:6px; border-bottom:1px solid var(--border); margin-bottom:10px; }
+.gcal-member-row { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
+.del-btn { background:none; border:none; color:#ccc; font-size:18px; cursor:pointer; }
+.add-small-btn { background:var(--green-light); border:2px dashed var(--green-mid); border-radius:8px; padding:7px 12px; color:var(--green); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; width:100%; }
+.ai-status { font-size:12px; color:var(--text-sub); margin:8px 0; display:none; line-height:1.5; }
+
+/* トースト */
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(16px); background:#1a2e22; color:white; padding:10px 20px; border-radius:20px; font-size:14px; font-weight:600; opacity:0; transition:all .3s; z-index:400; white-space:nowrap; }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏠 暮らしダッシュボード</h1>
+  <div class="header-right">
+    <div style="display:flex;align-items:center;gap:4px;">
+      <div class="sync-dot" id="syncDot"></div>
+      <span class="sync-label" id="syncLabel">同期中</span>
+    </div>
+    <button class="btn-icon" onclick="openSettings()">⚙️</button>
+  </div>
+</div>
+
+<div class="section">
+  <div class="card">
+    <div class="card-title">🗑️ ゴミの日</div>
+    <div class="trash-list" id="trashArea"></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="card">
+    <div class="cal-nav-row">
+      <button class="cal-btn" onclick="changeMonth(-1)">‹</button>
+      <div class="cal-month-label" id="calLabel"></div>
+      <button class="cal-btn" onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="card">
+    <div class="card-title-row">
+      <div class="card-title">👨‍👩‍👧 家族の予定</div>
+      <button class="refresh-btn" onclick="loadGcal()">🔄 更新</button>
+    </div>
+    <div id="gcalArea"><div style="color:var(--text-sub);font-size:13px;">設定からAPIキーとカレンダーIDを追加してください</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="card">
+    <div class="card-title">🌤️ 天気</div>
+    <div id="weatherArea"><div style="color:var(--text-sub);font-size:13px;">設定から地域を入力してください</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="card">
+    <div class="card-title">👧 こどもの予定</div>
+    <div class="kids-tabs">
+      <button class="kids-tab active" id="tabWeekday" onclick="switchKidsTab('weekday')">🏫 平日</button>
+      <button class="kids-tab" id="tabWeekend" onclick="switchKidsTab('weekend')">🌟 土日・祝日</button>
+    </div>
+    <div class="schedule-list" id="kidsSchedule"></div>
+    <button class="add-dashed-btn" onclick="openKidsModal()">＋ 予定を追加</button>
+  </div>
+</div>
+
+<div class="section">
+  <div class="card">
+    <div class="card-title">🍳 今日の献立</div>
+    <div class="ingredients-label">今ある食材（カンマ区切り）</div>
+    <textarea class="ingredients-input" id="ingredientsInput" placeholder="例：鶏肉, じゃがいも, 玉ねぎ, にんじん"></textarea>
+    <div class="ingredients-hint">入力した食材で作れる料理を3品提案します</div>
+    <div id="menuResult"></div>
+    <button class="suggest-btn" id="suggestBtn" onclick="suggestMenu()">✨ 献立を提案する</button>
+  </div>
+</div>
+
+<div class="section">
+  <div class="quick-links">
+    <a href="kids.html" class="quick-link">
+      <span class="quick-icon">👧</span>
+      <span class="quick-label">じかんわり</span>
+      <span class="quick-sublabel">5歳でも見やすい</span>
+    </a>
+    <a href="photos.html" class="quick-link">
+      <span class="quick-icon">📄</span>
+      <span class="quick-label">紙の写真</span>
+      <span class="quick-sublabel">給食表・行事など</span>
+    </a>
+    <a href="money.html" class="quick-link">
+      <span class="quick-icon">💰</span>
+      <span class="quick-label">月の支払い</span>
+      <span class="quick-sublabel">固定費の管理</span>
+    </a>
+  </div>
+</div>
+
+<!-- 予定モーダル -->
+<div class="overlay" id="eventOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <span id="eventModalTitle">📅 予定</span>
+      <button class="modal-close" onclick="closeEventModal()">×</button>
+    </div>
+    <div id="eventList" style="margin-bottom:14px;"></div>
+    <div class="form-group">
+      <div class="form-label">内容</div>
+      <input class="form-input" id="evName" placeholder="例：歯医者、習い事">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <div class="form-label">時間（任意）</div>
+        <input class="form-input" id="evTime" type="time">
+      </div>
+      <div class="form-group">
+        <div class="form-label">誰</div>
+        <select class="form-input" id="evWho">
+          <option>家族全員</option><option>パパ</option><option>ママ</option><option>こども</option>
+        </select>
+      </div>
+    </div>
+    <button class="primary-btn" onclick="addEvent()">追加する</button>
+  </div>
+</div>
+
+<!-- 子供予定モーダル -->
+<div class="overlay" id="kidsOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <span id="kidsModalTitle">予定を追加</span>
+      <button class="modal-close" onclick="closeKidsModal()">×</button>
+    </div>
+    <div class="form-group">
+      <div class="form-label">内容</div>
+      <input class="form-input" id="kidsName" placeholder="例：幼稚園、体操教室">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <div class="form-label">開始</div>
+        <input class="form-input" id="kidsStart" type="time" value="09:00">
+      </div>
+      <div class="form-group">
+        <div class="form-label">終了</div>
+        <input class="form-input" id="kidsEnd" type="time" value="15:00">
+      </div>
+    </div>
+    <button class="primary-btn" onclick="addKidsEvent()">追加する</button>
+  </div>
+</div>
+
+<!-- 設定モーダル -->
+<div class="overlay" id="settingsOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <span>⚙️ 設定</span>
+      <button class="modal-close" onclick="closeSettings()">×</button>
+    </div>
+
+    <div class="settings-block">
+      <div class="settings-block-title">🌤️ 天気の地域</div>
+      <div class="form-group">
+        <div class="form-label">市区町村名</div>
+        <input class="form-input" id="settingCity" placeholder="例：大阪市旭区">
+      </div>
+    </div>
+
+    <div class="settings-block">
+      <div class="settings-block-title">🗑️ ゴミの曜日設定</div>
+      <button class="primary-btn" id="trashAiBtn" style="font-size:13px;padding:10px;margin-bottom:8px;" onclick="fetchTrashByAI()">🤖 地域名からAIで自動取得</button>
+      <div class="ai-status" id="trashAiStatus"></div>
+      <div id="trashSettings"></div>
+      <button class="add-small-btn" style="margin-top:6px;" onclick="addTrash()">＋ 手動で追加</button>
+    </div>
+
+    <div class="settings-block">
+      <div class="settings-block-title">📅 家族のGoogleカレンダー連携</div>
+      <div style="font-size:12px;color:var(--text-sub);margin-bottom:10px;line-height:1.6;">
+        ① Googleカレンダーでカレンダーを「一般公開」に設定<br>
+        ② カレンダーIDをコピーして以下に入力
+      </div>
+      <div id="gcalSettings"></div>
+      <button class="add-small-btn" style="margin-bottom:12px;" onclick="addGcalMember()">＋ メンバーを追加</button>
+      <div class="form-group">
+        <div class="form-label">Google Calendar APIキー</div>
+        <input class="form-input" id="settingApiKey" placeholder="AIza...">
+      </div>
+    </div>
+
+    <div class="settings-block">
+      <div class="settings-block-title">📺 タブレット常時表示</div>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <input type="checkbox" id="wakeLockCheck" style="width:18px;height:18px;">
+        <span style="font-size:14px;">画面を消さない</span>
+      </label>
+    </div>
+
+    <button class="primary-btn" onclick="saveSettings()">保存して閉じる</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, onValue, set, push, remove, get }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCvLr32VkotUtHsnQWQHo7SvLtbJs1SH2E",
+  authDomain: "kurashi-dashboard.firebaseapp.com",
+  databaseURL: "https://kurashi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "kurashi-dashboard",
+  storageBucket: "kurashi-dashboard.firebasestorage.app",
+  messagingSenderId: "37547202019",
+  appId: "1:37547202019:web:2a467e96ea090a31e8fcd6",
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+
+let settings = { city:'', trash:[], gcalMembers:[], apiKey:'' };
+let events = {};
+let kidsWeekday = {};
+let kidsWeekend = {};
+let currentMonth = new Date();
+let selectedDate = null;
+let kidsTab = 'weekday';
+
+// Firebase リスナー
+onValue(ref(db,'settings'), s => { if(s.val()){ settings=s.val(); applySettings(); } });
+onValue(ref(db,'events'), s => { events=s.val()||{}; renderCalendar(); });
+onValue(ref(db,'kidsWeekday'), s => { kidsWeekday=s.val()||{}; renderKidsSchedule(); });
+onValue(ref(db,'kidsWeekend'), s => { kidsWeekend=s.val()||{}; renderKidsSchedule(); });
+onValue(ref(db,'.info/connected'), s => {
+  const ok = s.val();
+  document.getElementById('syncDot').classList.toggle('offline',!ok);
+  document.getElementById('syncLabel').textContent = ok?'同期中':'オフライン';
+});
+
+function applySettings() {
+  if(settings.city) fetchWeather(settings.city);
+  renderTrash();
+}
+
+// 設定
+window.openSettings = () => {
+  document.getElementById('settingCity').value = settings.city||'';
+  document.getElementById('settingApiKey').value = settings.apiKey||'';
+  document.getElementById('wakeLockCheck').checked = settings.wakeLock||false;
+  renderTrashSettings();
+  renderGcalSettings();
+  document.getElementById('settingsOverlay').classList.add('show');
+};
+window.closeSettings = () => document.getElementById('settingsOverlay').classList.remove('show');
+
+window.saveSettings = () => {
+  settings.city = document.getElementById('settingCity').value.trim();
+  settings.apiKey = document.getElementById('settingApiKey').value.trim();
+  settings.wakeLock = document.getElementById('wakeLockCheck').checked;
+  set(ref(db,'settings'), settings);
+  closeSettings();
+  showToast('設定を保存しました');
+  applySettings();
+};
+
+// ゴミ設定UI
+function renderTrashSettings() {
+  const trash = settings.trash||[];
+  document.getElementById('trashSettings').innerHTML = trash.map((t,i) => `
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+      <input class="form-input" value="${t.name}" placeholder="燃えるゴミ"
+        oninput="updateTrashName(${i},this.value)" style="flex:1;">
+      <select class="form-input" style="flex:1;" onchange="updateTrashDay(${i},this.value)">
+        ${['日','月','火','水','木','金','土'].map((d,di)=>
+          `<option value="${di}"${t.day==di?' selected':''}>${d}曜</option>`).join('')}
+      </select>
+      <button class="del-btn" onclick="removeTrash(${i})">✕</button>
+    </div>`).join('');
+}
+
+window.updateTrashName = (i,v) => { settings.trash[i].name=v; };
+window.updateTrashDay = (i,v) => { settings.trash[i].day=parseInt(v); };
+window.addTrash = () => {
+  if(!settings.trash) settings.trash=[];
+  settings.trash.push({name:'ゴミ',day:0});
+  renderTrashSettings();
+};
+window.removeTrash = i => {
+  settings.trash.splice(i,1);
+  renderTrashSettings();
+};
+
+// AIゴミ自動取得
+window.fetchTrashByAI = async () => {
+  const city = document.getElementById('settingCity').value.trim();
+  if(!city){ showToast('先に地域名を入力してください'); return; }
+  const btn = document.getElementById('trashAiBtn');
+  const status = document.getElementById('trashAiStatus');
+  btn.disabled = true;
+  btn.textContent = '🤖 調べています...';
+  status.style.display = 'block';
+  status.textContent = city+'のゴミ収集情報を調べています...';
+  try {
+    const res = await fetch('https://kurashi-ai.YOUR-SUBDOMAIN.workers.dev/trash',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({city})
+    });
+    const trash = await res.json();
+    if(!trash.length){
+      status.textContent = '⚠️ 情報が見つかりませんでした。手動で設定してください。';
+    } else {
+      settings.trash = trash;
+      renderTrashSettings();
+      status.textContent = '✅ '+trash.length+'種類設定しました。内容確認後に保存してください。';
+    }
+  } catch(e) {
+    status.textContent = '❌ エラーが発生しました。手動で設定してください。';
+  }
+  btn.disabled = false;
+  btn.textContent = '🤖 地域名からAIで自動取得';
+};
+
+// Gcal設定UI
+function renderGcalSettings() {
+  const members = settings.gcalMembers||[];
+  document.getElementById('gcalSettings').innerHTML = members.map((m,i) => `
+    <div class="gcal-member-row">
+      <input class="form-input" value="${m.name}" placeholder="名前"
+        oninput="updateGcalName(${i},this.value)" style="flex:0.7;">
+      <input class="form-input" value="${m.calId}" placeholder="カレンダーID"
+        oninput="updateGcalId(${i},this.value)" style="flex:1.3;">
+      <button class="del-btn" onclick="removeGcalMember(${i})">✕</button>
+    </div>`).join('');
+}
+
+window.updateGcalName = (i,v) => { settings.gcalMembers[i].name=v; };
+window.updateGcalId = (i,v) => { settings.gcalMembers[i].calId=v; };
+window.addGcalMember = () => {
+  if(!settings.gcalMembers) settings.gcalMembers=[];
+  settings.gcalMembers.push({name:'',calId:''});
+  renderGcalSettings();
+};
+window.removeGcalMember = i => {
+  settings.gcalMembers.splice(i,1);
+  renderGcalSettings();
+};
+
+// ゴミ表示
+function renderTrash() {
+  const trash = settings.trash||[];
+  const today = new Date().getDay();
+  const tomorrow = (today+1)%7;
+  let html = trash.filter(t=>t.day===today).map(t=>`<div class="trash-badge">🗑️ ${t.name} <span style="font-size:10px;opacity:.6">今日</span></div>`).join('');
+  html += trash.filter(t=>t.day===tomorrow).map(t=>`<div class="trash-badge tomorrow">🗑️ ${t.name} <span style="font-size:10px">明日</span></div>`).join('');
+  document.getElementById('trashArea').innerHTML = html||'<div class="trash-none">今日・明日はゴミの日ではありません</div>';
+}
+
+// カレンダー
+window.changeMonth = dir => {
+  currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+dir, 1);
+  renderCalendar();
+};
+
+function renderCalendar() {
+  const y=currentMonth.getFullYear(), m=currentMonth.getMonth();
+  const today = new Date();
+  document.getElementById('calLabel').textContent = `${y}年${m+1}月`;
+  const key = `${y}-${String(m+1).padStart(2,'0')}`;
+  const monthEv = events[key]||{};
+  const evByDay = {};
+  Object.values(monthEv).forEach(ev => {
+    const d = parseInt(ev.date.split('-')[2]);
+    evByDay[d] = (evByDay[d]||0)+1;
+  });
+  const firstDow = new Date(y,m,1).getDay();
+  const lastDate = new Date(y,m+1,0).getDate();
+  let html = ['日','月','火','水','木','金','土'].map((d,i)=>
+    `<div class="cal-dow${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('');
+  for(let i=0;i<firstDow;i++) html+='<div class="cal-day empty"></div>';
+  for(let d=1;d<=lastDate;d++){
+    const dow=(firstDow+d-1)%7;
+    const isToday=today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===d;
+    const cnt=evByDay[d]||0;
+    const dots=Array.from({length:Math.min(cnt,3)}).map(()=>'<div class="day-dot"></div>').join('');
+    html+=`<div class="cal-day${isToday?' today':''}${dow===0?' sun':dow===6?' sat':''}" onclick="openEventModal(${y},${m},${d})">
+      <div class="day-num">${d}</div><div class="day-dots">${dots}</div></div>`;
+  }
+  document.getElementById('calGrid').innerHTML = html;
+}
+
+// 予定モーダル
+window.openEventModal = (y,m,d) => {
+  selectedDate={y,m,d};
+  const key=`${y}-${String(m+1).padStart(2,'0')}`;
+  const dateStr=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const dayEv=Object.entries(events[key]||{}).filter(([,ev])=>ev.date===dateStr);
+  document.getElementById('eventModalTitle').textContent=`📅 ${m+1}月${d}日`;
+  document.getElementById('eventList').innerHTML = dayEv.length
+    ? dayEv.map(([id,ev])=>`<div class="event-card"><div><div class="event-card-who">${ev.who||''}</div><div class="event-card-name">${ev.name}</div>${ev.time?`<div class="event-card-time">⏰ ${ev.time}</div>`:''}</div><button class="event-card-del" onclick="deleteEvent('${key}','${id}')">✕</button></div>`).join('')
+    : '<div style="color:var(--text-sub);font-size:13px;margin-bottom:10px;">予定なし</div>';
+  document.getElementById('evName').value='';
+  document.getElementById('evTime').value='';
+  document.getElementById('eventOverlay').classList.add('show');
+};
+window.closeEventModal = () => document.getElementById('eventOverlay').classList.remove('show');
+window.addEvent = () => {
+  const name=document.getElementById('evName').value.trim();
+  if(!name) return;
+  const {y,m,d}=selectedDate;
+  const key=`${y}-${String(m+1).padStart(2,'0')}`;
+  const date=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  push(ref(db,`events/${key}`),{name,time:document.getElementById('evTime').value,who:document.getElementById('evWho').value,date});
+  showToast('予定を追加しました');
+  closeEventModal();
+};
+window.deleteEvent = (key,id) => { remove(ref(db,`events/${key}/${id}`)); showToast('削除しました'); closeEventModal(); };
+
+// 子供の予定
+window.switchKidsTab = tab => {
+  kidsTab=tab;
+  document.getElementById('tabWeekday').classList.toggle('active',tab==='weekday');
+  document.getElementById('tabWeekend').classList.toggle('active',tab==='weekend');
+  renderKidsSchedule();
+};
+function renderKidsSchedule() {
+  const data=kidsTab==='weekday'?kidsWeekday:kidsWeekend;
+  const items=Object.entries(data).sort((a,b)=>(a[1].start||'').localeCompare(b[1].start||''));
+  const el=document.getElementById('kidsSchedule');
+  el.innerHTML = items.length
+    ? items.map(([id,item])=>`<div class="schedule-item"><div class="schedule-time">${item.start||''}${item.end?'〜'+item.end:''}</div><div class="schedule-name">${item.name}</div><button class="schedule-del" onclick="deleteKidsEvent('${id}')">✕</button></div>`).join('')
+    : '<div class="schedule-empty">まだ予定がありません</div>';
+}
+window.openKidsModal = () => {
+  document.getElementById('kidsModalTitle').textContent=kidsTab==='weekday'?'🏫 平日の予定を追加':'🌟 土日の予定を追加';
+  document.getElementById('kidsName').value='';
+  document.getElementById('kidsOverlay').classList.add('show');
+};
+window.closeKidsModal = () => document.getElementById('kidsOverlay').classList.remove('show');
+window.addKidsEvent = () => {
+  const name=document.getElementById('kidsName').value.trim();
+  if(!name) return;
+  push(ref(db,kidsTab==='weekday'?'kidsWeekday':'kidsWeekend'),{name,start:document.getElementById('kidsStart').value,end:document.getElementById('kidsEnd').value});
+  showToast('追加しました');
+  closeKidsModal();
+};
+window.deleteKidsEvent = id => { remove(ref(db,`${kidsTab==='weekday'?'kidsWeekday':'kidsWeekend'}/${id}`)); };
+
+// 天気
+async function fetchWeather(city) {
+  try {
+    const geo=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=ja`).then(r=>r.json());
+    if(!geo.results?.length) return;
+    const {latitude:lat,longitude:lon}=geo.results[0];
+    const w=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m,relativehumidity_2m,apparent_temperature&timezone=Asia%2FTokyo`).then(r=>r.json());
+    const c=w.current;
+    const emojis={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'❄️',73:'❄️',75:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',95:'⛈️'};
+    const descs={0:'快晴',1:'晴れ',2:'曇りがち',3:'曇り',45:'霧',48:'霧',51:'小雨',53:'雨',55:'強雨',61:'小雨',63:'雨',65:'大雨',71:'小雪',73:'雪',75:'大雪',80:'にわか雨',81:'雨',82:'激しい雨',95:'雷雨'};
+    document.getElementById('weatherArea').innerHTML=`
+      <div class="weather-main-row">
+        <div class="weather-emoji">${emojis[c.weathercode]||'🌡️'}</div>
+        <div><div class="weather-temp">${Math.round(c.temperature_2m)}°C</div>
+        <div class="weather-desc">${descs[c.weathercode]||''}</div>
+        <div class="weather-location">${city} · 体感${Math.round(c.apparent_temperature)}°C</div></div>
+      </div>
+      <div class="weather-sub-row">
+        <div class="weather-sub-item"><div class="weather-sub-val">💧${c.relativehumidity_2m}%</div><div class="weather-sub-label">湿度</div></div>
+        <div class="weather-sub-item"><div class="weather-sub-val">💨${Math.round(c.windspeed_10m)}km/h</div><div class="weather-sub-label">風速</div></div>
+      </div>`;
+  } catch(e){ console.error(e); }
+}
+
+// Googleカレンダー
+window.loadGcal = async () => {
+  const members=settings.gcalMembers||[];
+  const apiKey=settings.apiKey||'';
+  if(!members.length||!apiKey){ document.getElementById('gcalArea').innerHTML='<div style="color:var(--text-sub);font-size:13px;">設定からAPIキーとカレンダーIDを追加してください</div>'; return; }
+  const now=new Date();
+  const timeMin=encodeURIComponent(now.toISOString());
+  const timeMax=encodeURIComponent(new Date(now.getFullYear(),now.getMonth()+1,0).toISOString());
+  let html='';
+  for(const m of members){
+    if(!m.calId) continue;
+    try {
+      const data=await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(m.calId)}/events?key=${apiKey}&timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=5`).then(r=>r.json());
+      const evs=data.items||[];
+      html+=`<div class="gcal-member"><div class="gcal-member-name">📅 ${m.name}</div>${evs.length?evs.map(ev=>{const s=ev.start?.dateTime?new Date(ev.start.dateTime):null;const t=s?`${s.getMonth()+1}/${s.getDate()} ${String(s.getHours()).padStart(2,'0')}:${String(s.getMinutes()).padStart(2,'0')}`:(ev.start?.date||'');return`<div class="gcal-event-item">📌 ${t} ${ev.summary||''}</div>`;}).join(''):'<div class="gcal-none">今月の予定なし</div>'}</div>`;
+    } catch(e){ html+=`<div class="gcal-member"><div class="gcal-member-name">${m.name}</div><div class="gcal-none">読み込み失敗</div></div>`; }
+  }
+  document.getElementById('gcalArea').innerHTML=html||'<div style="color:var(--text-sub);font-size:13px;">メンバーを設定してください</div>';
+};
+
+// 献立AI（Firebaseに保存）
+get(ref(db,'menu')).then(s => {
+  const saved = s.val();
+  if(!saved) return;
+  if(saved.ingredients) document.getElementById('ingredientsInput').value = saved.ingredients;
+  if(saved.menus) renderMenuResult(saved.menus);
+}).catch(e => console.error(e));
+
+function renderMenuResult(menus) {
+  document.getElementById('menuResult').innerHTML = `<div class="menu-result">${menus.map(m=>`<div class="menu-item"><div class="menu-emoji">${m.emoji}</div><div><div class="menu-name">${m.name}</div><div class="menu-desc">${m.desc}</div></div></div>`).join('')}</div>`;
+}
+
+let isSuggesting = false;
+window.suggestMenu = async () => {
+  if(isSuggesting) return;
+  const ing=document.getElementById('ingredientsInput').value.trim();
+  if(!ing){ showToast('食材を入力してください'); return; }
+  isSuggesting = true;
+  const btn=document.getElementById('suggestBtn');
+  btn.disabled=true;
+  btn.innerHTML='<div class="spinner"></div><span>考え中...</span>';
+  try {
+    const res=await fetch('https://kurashi-ai.YOUR-SUBDOMAIN.workers.dev/suggest',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ingredients:ing})
+    });
+    const menus=await res.json();
+    renderMenuResult(menus);
+    set(ref(db,'menu'), { ingredients: ing, menus });
+  } catch(e){ showToast('エラーが発生しました'); console.error(e); }
+  btn.disabled=false;
+  btn.innerHTML='✨ 別の案を見る';
+  isSuggesting = false;
+};
+
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+window.showToast=showToast;
+
+renderCalendar();
+renderTrash();
+</script>
+</body>
+</html>
