@@ -699,11 +699,23 @@ window.addKidsEvent = () => {
 window.deleteKidsEvent = id => { remove(ref(db,`${kidsTab==='weekday'?'kidsWeekday':'kidsWeekend'}/${id}`)); };
 
 // 天気
+async function geocodeCity(city) {
+  // まず入力そのままで検索。ヒットしなければ末尾を1文字ずつ削って再検索
+  // （例：「大阪市旭区新森」→「大阪市旭区」→「大阪市旭」→…→「大阪市」）
+  let q = city.trim();
+  while(q.length){
+    const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=ja`).then(r=>r.json());
+    if(geo.results?.length) return { result: geo.results[0], matchedName: q };
+    q = q.slice(0,-1);
+  }
+  return null;
+}
+
 async function fetchWeather(city) {
   try {
-    const geo=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=ja`).then(r=>r.json());
-    if(!geo.results?.length) return;
-    const {latitude:lat,longitude:lon}=geo.results[0];
+    const found = await geocodeCity(city);
+    if(!found) { document.getElementById('weatherArea').innerHTML = `<div style="color:var(--text-sub);font-size:13px;">「${city}」の地域が見つかりませんでした。市区町村名で入力してください</div>`; return; }
+    const {latitude:lat,longitude:lon} = found.result;
     const w=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m,relativehumidity_2m,apparent_temperature&timezone=Asia%2FTokyo`).then(r=>r.json());
     const c=w.current;
     const emojis={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'❄️',73:'❄️',75:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',95:'⛈️'};
