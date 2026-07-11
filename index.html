@@ -412,9 +412,14 @@ onValue(ref(db,'.info/connected'), s => {
   document.getElementById('syncLabel').textContent = ok?'同期中':'オフライン';
 });
 
+let gcalAutoLoaded = false;
 function applySettings() {
   if(settings.city) fetchWeather(settings.city);
   renderTrash();
+  if(!gcalAutoLoaded && settings.apiKey && (settings.gcalMembers||[]).some(m=>m.calId)){
+    gcalAutoLoaded = true;
+    loadGcal();
+  }
 }
 
 // 設定
