@@ -36,6 +36,21 @@ body { font-family: -apple-system,'Hiragino Sans',sans-serif; background:var(--b
 .card-title-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .card-title-row .card-title { margin-bottom:0; }
 
+/* 時計・アラーム */
+.clock-display { font-size:42px; font-weight:800; text-align:center; letter-spacing:1px; font-variant-numeric:tabular-nums; }
+.clock-date { text-align:center; font-size:13px; color:var(--text-sub); margin-top:2px; margin-bottom:14px; }
+.alarm-list { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+.alarm-item { display:flex; align-items:center; gap:10px; background:var(--accent-light); border-radius:10px; padding:9px 12px; }
+.alarm-item.disabled { opacity:0.45; }
+.alarm-time { font-size:17px; font-weight:800; min-width:54px; }
+.alarm-label { font-size:13px; flex:1; color:var(--text-sub); }
+.alarm-del { background:none; border:none; color:#ccc; font-size:16px; cursor:pointer; }
+.alarm-empty { color:var(--text-sub); font-size:13px; text-align:center; padding:8px; }
+.alarm-add-row { display:flex; gap:6px; }
+.alarm-add-row input[type="time"] { flex:0 0 100px; }
+.alarm-add-row input[type="text"] { flex:1; }
+.alarm-add-row button { flex:0 0 44px; background:var(--green); color:white; border:none; border-radius:10px; font-size:18px; font-weight:700; cursor:pointer; }
+
 /* ゴミ */
 .trash-list { display:flex; flex-wrap:wrap; gap:8px; }
 .trash-badge { background:var(--green-light); border:1.5px solid var(--green-mid); border-radius:10px; padding:7px 12px; font-size:13px; font-weight:600; color:var(--green); }
@@ -158,6 +173,20 @@ body { font-family: -apple-system,'Hiragino Sans',sans-serif; background:var(--b
       <span class="sync-label" id="syncLabel">同期中</span>
     </div>
     <button class="btn-icon" onclick="openSettings()">⚙️</button>
+  </div>
+</div>
+
+<div class="section">
+  <div class="card">
+    <div class="clock-display" id="clockTime">--:--:--</div>
+    <div class="clock-date" id="clockDate"></div>
+    <div class="card-title">⏰ アラーム</div>
+    <div class="alarm-list" id="alarmList"></div>
+    <div class="alarm-add-row">
+      <input class="form-input" type="time" id="alarmTimeInput" value="07:00">
+      <input class="form-input" type="text" id="alarmLabelInput" placeholder="例：起床、出発">
+      <button onclick="addAlarm()">＋</button>
+    </div>
   </div>
 </div>
 
@@ -365,15 +394,18 @@ let settings = { city:'', trash:[], gcalMembers:[], apiKey:'' };
 let events = {};
 let kidsWeekday = {};
 let kidsWeekend = {};
+let alarms = {};
 let currentMonth = new Date();
 let selectedDate = null;
 let kidsTab = 'weekday';
+let lastAlarmMinute = '';
 
 // Firebase リスナー
 onValue(ref(db,'settings'), s => { if(s.val()){ settings=s.val(); applySettings(); } });
 onValue(ref(db,'events'), s => { events=s.val()||{}; renderCalendar(); });
 onValue(ref(db,'kidsWeekday'), s => { kidsWeekday=s.val()||{}; renderKidsSchedule(); });
 onValue(ref(db,'kidsWeekend'), s => { kidsWeekend=s.val()||{}; renderKidsSchedule(); });
+onValue(ref(db,'alarms'), s => { alarms=s.val()||{}; renderAlarmList(); });
 onValue(ref(db,'.info/connected'), s => {
   const ok = s.val();
   document.getElementById('syncDot').classList.toggle('offline',!ok);
@@ -488,6 +520,78 @@ window.removeGcalMember = i => {
   settings.gcalMembers.splice(i,1);
   renderGcalSettings();
 };
+
+// 時計
+function updateClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const ss = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('clockTime').textContent = `${hh}:${mm}:${ss}`;
+  const dow = ['日','月','火','水','木','金','土'][now.getDay()];
+  document.getElementById('clockDate').textContent = `${now.getMonth()+1}月${now.getDate()}日（${dow}）`;
+  checkAlarms(now, `${hh}:${mm}`);
+}
+
+// アラーム
+function renderAlarmList() {
+  const items = Object.entries(alarms).sort((a,b)=>(a[1].time||'').localeCompare(b[1].time||''));
+  const el = document.getElementById('alarmList');
+  el.innerHTML = items.length
+    ? items.map(([id,a])=>`
+      <div class="alarm-item${a.enabled===false?' disabled':''}">
+        <input type="checkbox" ${a.enabled===false?'':'checked'} onchange="toggleAlarm('${id}',this.checked)" style="width:18px;height:18px;">
+        <div class="alarm-time">${a.time}</div>
+        <div class="alarm-label">${a.label||''}</div>
+        <button class="alarm-del" onclick="deleteAlarm('${id}')">✕</button>
+      </div>`).join('')
+    : '<div class="alarm-empty">アラームが設定されていません</div>';
+}
+window.addAlarm = () => {
+  const time = document.getElementById('alarmTimeInput').value;
+  const label = document.getElementById('alarmLabelInput').value.trim();
+  if(!time){ showToast('時刻を選んでください'); return; }
+  push(ref(db,'alarms'), { time, label, enabled:true });
+  document.getElementById('alarmLabelInput').value='';
+  showToast('アラームを追加しました');
+};
+window.toggleAlarm = (id,checked) => { set(ref(db,`alarms/${id}/enabled`), checked); };
+window.deleteAlarm = id => { remove(ref(db,`alarms/${id}`)); showToast('アラームを削除しました'); };
+
+let alarmAudioCtx = null;
+function playAlarmSound() {
+  try {
+    if(!alarmAudioCtx) alarmAudioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    const ctx = alarmAudioCtx;
+    for(let i=0;i<4;i++){
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      gain.gain.value = 0.15;
+      osc.connect(gain).connect(ctx.destination);
+      const start = ctx.currentTime + i*0.5;
+      osc.start(start);
+      osc.stop(start + 0.35);
+    }
+  } catch(e){ console.error(e); }
+}
+function checkAlarms(now, hhmm) {
+  if(hhmm === lastAlarmMinute) return;
+  const matches = Object.values(alarms).filter(a => a.enabled!==false && a.time===hhmm);
+  if(matches.length){
+    lastAlarmMinute = hhmm;
+    playAlarmSound();
+    matches.forEach(a => showToast(`⏰ ${a.label||'アラーム'} の時間です`));
+    if('Notification' in window && Notification.permission==='granted'){
+      matches.forEach(a => new Notification('⏰ ' + (a.label||'アラーム'), { body: hhmm }));
+    }
+    if(navigator.vibrate) navigator.vibrate([300,100,300]);
+  }
+}
+if('Notification' in window && Notification.permission==='default'){
+  document.addEventListener('click', () => { Notification.requestPermission(); }, { once:true });
+}
 
 // ゴミ表示
 function renderTrash() {
@@ -674,6 +778,8 @@ window.showToast=showToast;
 
 renderCalendar();
 renderTrash();
+updateClock();
+setInterval(updateClock, 1000);
 </script>
 </body>
 </html>
